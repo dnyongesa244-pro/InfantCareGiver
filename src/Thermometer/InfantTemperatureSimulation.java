@@ -1,55 +1,39 @@
 package Thermometer;
 
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
-
-import javax.swing.*;
-import java.awt.*;
 import java.text.DecimalFormat;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 
 public class InfantTemperatureSimulation {
 
-    private static final int WINDOW_SIZE = 20; // Number of data points to display in the chart
+    private static final int AVERAGE_WINDOW_SIZE = 60; // Number of seconds to calculate average over
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> createAndShowGui());
+        simulateTemperatureReadings();
     }
 
-    private static void createAndShowGui() {
-        JFrame frame = new JFrame("Infant Temperature Simulation");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        XYSeries temperatureSeries = new XYSeries("Infant Temperature");
-        XYSeriesCollection dataset = new XYSeriesCollection(temperatureSeries);
-        JFreeChart chart = ChartFactory.createXYLineChart(
-                "Infant Temperature Simulation", "Time", "Temperature (°C)",
-                dataset
-        );
-
-        ChartPanel chartPanel = new ChartPanel(chart);
-        chartPanel.setPreferredSize(new Dimension(800, 600));
-
-        frame.getContentPane().add(chartPanel);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-
-        simulateTemperatureReadings(temperatureSeries);
-    }
-
-    private static void simulateTemperatureReadings(XYSeries temperatureSeries) {
+    private static void simulateTemperatureReadings() {
         Random random = new Random();
+        Queue<Double> temperatureQueue = new LinkedList<>();
+        double currentTemperature = generateRealisticTemperature();
 
-        for (int i = 0; i < 100; i++) {
-            double temperature = generateRealisticTemperature();
-            temperatureSeries.add(i, temperature);
+        while (true) {
+            // Gradually change the temperature using a simple moving average
+            double nextTemperature = currentTemperature + (random.nextDouble() - 0.5) * 0.5; // Larger random variation
+            currentTemperature = (currentTemperature + nextTemperature) / 2.0;
+
+            temperatureQueue.offer(currentTemperature);
+            if (temperatureQueue.size() > AVERAGE_WINDOW_SIZE) {
+                temperatureQueue.poll(); // Remove oldest temperature value
+            }
+
+            double averageTemperature = calculateAverage(temperatureQueue);
+            displayTemperature(averageTemperature);
 
             try {
-                Thread.sleep(1000);
+                // Adjust the sleeping time between temperature readings (e.g., 500 milliseconds)
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -57,15 +41,28 @@ public class InfantTemperatureSimulation {
     }
 
     private static double generateRealisticTemperature() {
-        // Simulate a realistic temperature range for an infant
-        double minTemperature = 36.0;
-        double maxTemperature = 37.5;
+        // Simulate a realistic starting temperature for an infant (between 35.5 and 38.0 degrees Celsius)
+        double minTemperature = 35.5;
+        double maxTemperature = 38.0;
 
-        // Add some variation to the temperature readings
         Random random = new Random();
-        double variation = random.nextDouble() * 0.5; // Maximum variation of 0.5 degrees
-        double temperature = minTemperature + variation;
+        return minTemperature + random.nextDouble() * (maxTemperature - minTemperature);
+    }
 
-        return temperature;
+    private static double calculateAverage(Queue<Double> temperatureQueue) {
+        double sum = 0.0;
+        for (Double temperature : temperatureQueue) {
+            sum += temperature;
+        }
+        return sum / temperatureQueue.size();
+    }
+
+    private static void displayTemperature(double temperature) {
+        // Format the temperature to display two decimal places
+        DecimalFormat df = new DecimalFormat("#.##");
+        String formattedTemperature = df.format(temperature);
+
+        // Display the average temperature reading
+        System.out.println("Average Infant's Temperature: " + formattedTemperature + " °C");
     }
 }
